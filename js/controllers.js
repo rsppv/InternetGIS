@@ -6,6 +6,7 @@ var InternetGis = angular.module('InternetGis', []);
 
 InternetGis.controller('MainCtrl', function ($scope) {
 
+  /* Initialization */
   var geocoder;
   var map;
 
@@ -24,6 +25,26 @@ InternetGis.controller('MainCtrl', function ($scope) {
         types: ['(cities)'],
         componentRestrictions: {country: 'ru'} };
       var autocomplete = new google.maps.places.Autocomplete(input, options);
+
+      google.maps.event.addListener(autocomplete, 'place_changed', function() {
+        var place = autocomplete.getPlace();
+        if (!place.geometry) {return;}
+
+        map.setCenter(place.geometry.location);
+        var marker = new google.maps.Marker({
+            map: map,
+            position: place.geometry.location
+        });
+
+        var name = place.formatted_address;
+        var location = place.geometry;
+
+        var newCity = {'name': name, "location": location, "marker": marker};
+        $scope.cities.push(newCity);
+        $scope.newCityName = null;
+        $scope.$apply();
+
+      });
   }
 
   function setMapWidth() {
@@ -32,7 +53,7 @@ InternetGis.controller('MainCtrl', function ($scope) {
     $("#map_canvas").width(mapWidth);
   }
 
-  /* Initialization */
+  /* Constructor */
   angular.element(document).ready(function(){
     initialize();
     setMapWidth();
@@ -62,9 +83,8 @@ InternetGis.controller('MainCtrl', function ($scope) {
         var name = results[0].formatted_address;
         var location = results[0].geometry;
 
-        var newCity = {'name': name, "location": location};
+        var newCity = {'name': name, "location": location, "marker": marker};
         $scope.cities.push(newCity);
-        $scope.newCityName = null; 
         $scope.$apply();
       } else {        
         $("#city-search").notify("Ошибка: " + status, { position: "bottom"});
@@ -73,6 +93,7 @@ InternetGis.controller('MainCtrl', function ($scope) {
   };
 
   $scope.removeCity = function(index){
+    $scope.cities[index].marker.setMap(null);
     $scope.cities.splice(index, 1);
   };
 

@@ -1,44 +1,56 @@
 <!DOCTYPE html>
 <html lang="en" ng-app="InternetGis">
 <head>
-	<meta charset="UTF-8">
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
-	<link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
-	<link rel="stylesheet" type="text/css" href="styles/layout.css">
-	<script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>	
-	<script type="text/javascript"
-			src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
-	<script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>	
+  <meta charset="UTF-8">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
+  <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
+  <link rel="stylesheet" type="text/css" href="styles/layout.css">
+  <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>  
+  <script type="text/javascript"
+      src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script> 
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.12/angular.min.js"></script>
-	<script src="js/main.js"></script>
-	<script src="js/controllers.js"></script>
-	<title>Поиск оптимального пути</title>
+  <script src="js/notify.min.js"></script>
+  <script src="js/main.js"></script>
+  <script src="js/controllers.js"></script>
+  <title>Поиск оптимального пути</title>
 </head>
 <body ng-controller="MainCtrl">
-	<div id="content">
-		<div id="control_panel">
-			<h2 class="page-header">Панель управления</h2>
-			<h3>Список городов</h3>
-			<ul id="cities_list" class="list-group">
-				<li class="city list-group-item" ng-repeat="city in cities">
-					<span ng-model="selectedCity">{{city.name}}</span>
-					<span ng-model="removeCity" class="remove-city glyphicon glyphicon-remove"></span>
-				</li>				
-			</ul>
-			<div>
-				<form ng-submit="addCity()">
-					<div class="input-group">
-						<span class="input-group-addon" id="basic-addon">
-							<span class="glyphicon glyphicon-map-marker"></span>
-						</span>
-						<input ng-model="cityToAdd" type="text" id="city-to-add" class="form-control" placeholder="Название города" aria-describedby="basic-addon">
-					</div>					
-					<input type="submit" value="Добавить" class="btn btn-primary btn-add-city"></input>
-				</form>
-			</div>
+  <div id="content">
+    <div id="control_panel">
+      <h2 class="page-header">Панель управления</h2>
 
-		</div>
-		<div id="map_canvas"></div>	
-	</div>	
+      <h3>Список городов</h3> 
+
+
+      <form ng-submit="addCity()" class="form-inline add-city-form">
+        <div class="form-group">
+          <div class="input-group">
+            <span class="input-group-addon" id="basic-addon">
+              <span class="fa fa-map-marker"></span>
+            </span>
+            <input ng-model="newCityName" type="text" id="city-address" class="form-control" placeholder="Название города" aria-describedby="basic-addon">
+            </input>
+            <span class="input-group-btn">
+              <button class="btn btn-default">
+                <span class="fa fa-search"></span>
+              </button>
+            </span>
+          </div> 
+        </div>         
+      </form> 
+
+
+      <ul id="cities_list" class="list-group">
+        <li class="city list-group-item" ng-repeat="city in cities">
+          {{city.name}}
+          <span ng-click="removeCity($index)" class="remove-city fa fa-times"></span>
+        </li>       
+      </ul>
+
+    </div>
+    <div id="map_canvas"></div> 
+  </div>  
 </body>
 </html>

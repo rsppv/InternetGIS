@@ -8,11 +8,11 @@
   <link rel="stylesheet" type="text/css" href="styles/layout.css">
   <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>  
   <script type="text/javascript"
-      src="http://maps.googleapis.com/maps/api/js?sensor=false"></script>
+      src="http://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true&libraries=places"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script> 
     <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.12/angular.min.js"></script>
   <script src="js/notify.min.js"></script>
-  <script src="js/main.js"></script>
+  <!--<script src="js/main.js"></script>-->
   <script src="js/controllers.js"></script>
   <title>Поиск оптимального пути</title>
 </head>
@@ -30,7 +30,7 @@
             <span class="input-group-addon" id="basic-addon">
               <span class="fa fa-map-marker"></span>
             </span>
-            <input ng-model="newCityName" type="text" id="city-address" class="form-control" placeholder="Название города" aria-describedby="basic-addon">
+            <input id="city-search" ng-model="newCityName" type="text" class="form-control" placeholder="Название города" aria-describedby="basic-addon">
             </input>
             <span class="input-group-btn">
               <button class="btn btn-default">

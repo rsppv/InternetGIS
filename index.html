@@ -9,10 +9,9 @@
   <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>  
   <script type="text/javascript"
       src="http://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true&libraries=places"></script>
-  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script> 
-    <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.12/angular.min.js"></script>
+  <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
+  <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.12/angular.min.js"></script>
   <script src="js/notify.min.js"></script>
-  <!--<script src="js/main.js"></script>-->
   <script src="js/controllers.js"></script>
   <title>Поиск оптимального пути</title>
 </head>
@@ -22,32 +21,47 @@
       <h2 class="page-header">Панель управления</h2>
 
       <h3>Список городов</h3> 
+      <div class="input-group" id="search-box">
+        <span class="input-group-addon" id="basic-addon">
+          <span class="fa fa-map-marker"></span>
+        </span>
+        <input id="city-search" ng-model="newCityName" type="text" class="form-control" placeholder="Добавить город" aria-describedby="basic-addon">
+        </input>
+      </div>
+      
+      <div id="cities-list-container">
+        <ul id="cities-list" class="list-group">
+          <li class="city list-group-item" ng-repeat="city in cities">
+            <span ng-click="showCity($index)" class="cityName">{{city.name}}</span>
+            <div class="remove-city-container">
+              <div class="remove-city fa fa-times" ng-click="removeCity($index)"></div>
+            </div>
+          </li>       
+        </ul>
+      </div>
+
+      <div id="salesman-box">
+      <h3>Построение маршрута</h3>
+      <div class="form-group">
+        <select id="start-point-select" class="form-control" ng-model="startPoint" ng-change="startPointChanged()">
+          <option value="" disabled selected>Начальная точка</option>
+          <option ng-repeat="city in cities">{{city.name}}</option>
+        </select>
 
 
-      <form class="form-inline add-city-form">
-        <div class="form-group">
-          <div class="input-group">
-            <span class="input-group-addon" id="basic-addon">
-              <span class="fa fa-map-marker"></span>
-            </span>
-            <input id="city-search" ng-model="newCityName" type="text" class="form-control" placeholder="Название города" aria-describedby="basic-addon">
-            </input>
-            <span class="input-group-btn">
-              <button class="btn btn-default">
-                <span class="fa fa-search"></span>
-              </button>
-            </span>
-          </div> 
-        </div>         
-      </form> 
+        <div id="back-to-start-checkbox" class="checkbox">
+          <label>
+            <input type="checkbox" ng-model="backToStart">Вернуться в начало</input>  
+          </label>             
+        </div>        
+        <select id="end-point-select" class="form-control" ng-model="endPoint" ng-disabled="backToStart">
+          <option value="" disabled selected>Конечная точка</option>
+          <option ng-repeat="city in cities" ng-if="city.name!=startPoint">{{city.name}}</option>
+        </select>
+      </div>
+      </div>
 
-
-      <ul id="cities_list" class="list-group">
-        <li class="city list-group-item" ng-repeat="city in cities">
-          {{city.name}}
-          <span ng-click="removeCity($index)" class="remove-city fa fa-times"></span>
-        </li>       
-      </ul>
+      <button id="b-calculate" ng-click="calculatePath()" class="btn btn-primary">Найти оптимальный маршрут</button>
 
     </div>
     <div id="map_canvas"></div> 

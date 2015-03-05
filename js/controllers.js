@@ -30,19 +30,33 @@ InternetGis.controller('MainCtrl', function ($scope) {
         var place = autocomplete.getPlace();
         if (!place.geometry) {return;}
 
-        map.setCenter(place.geometry.location);
+
+        var name = place.formatted_address;
+        var location = place.geometry;
         var marker = new google.maps.Marker({
             map: map,
             position: place.geometry.location
         });
+        map.setCenter(place.geometry.location);
 
-        var name = place.formatted_address;
-        var location = place.geometry;
+        var grepFunc = function(el, i) {
+          if (el.name == name) {return true};
+          return false;
+        };
 
-        var newCity = {'name': name, "location": location, "marker": marker};
-        $scope.cities.push(newCity);
+        if ($.grep($scope.cities, grepFunc).length == 0) {
+          var newCity = {'name': name, "location": location, "marker": marker};
+          $scope.cities.push(newCity);          
+        } else {
+          $("#search-box").notify(
+            "Эта точка уже добавлена", 
+            { position:"bottom left" }
+          );
+        }
+
+        place = null;
         $scope.newCityName = null;
-        $scope.$apply();
+        $scope.$apply();  
 
       });
   }
@@ -66,35 +80,77 @@ InternetGis.controller('MainCtrl', function ($scope) {
 
 
   /* Methods */
-
-  $scope.addCity = function(){
-    if (!$scope.newCityName) { return };
-    
-    geocoder.geocode( { 'address': $scope.newCityName}, function(results, status) {
-      if (status == google.maps.GeocoderStatus.OK) {
-
-        map.setCenter(results[0].geometry.location);
-        var marker = new google.maps.Marker({
-            map: map,
-            position: results[0].geometry.location
-        });
-
-
-        var name = results[0].formatted_address;
-        var location = results[0].geometry;
-
-        var newCity = {'name': name, "location": location, "marker": marker};
-        $scope.cities.push(newCity);
-        $scope.$apply();
-      } else {        
-        $("#city-search").notify("Ошибка: " + status, { position: "bottom"});
-      }
-    });
-  };
-
   $scope.removeCity = function(index){
     $scope.cities[index].marker.setMap(null);
     $scope.cities.splice(index, 1);
   };
+
+  $scope.showCity = function(index){
+    map.setCenter($scope.cities[index].marker.position);
+  };
+
+  $scope.startPointChanged = function(){
+    if ($scope.startPoint == $scope.endPoint) {
+      $scope.endPoint = null;
+    };
+  }
+
+
+  $scope.calculatePath = function(){
+    if (checkConstraints()){
+      var grepFunc = function(el, i) {
+        if (el.name == $scope.startPoint){ return false; }
+        if (!$scope.backToStart && el.name == $scope.endPoint) { return false; }
+        return true;
+      }
+
+      var intermediateCities = $.grep($scope.cities,grepFunc);
+      var intermediateCitiesString = "";
+      $.each(intermediateCities, function(i, el){
+        intermediateCitiesString += el.name + "\r\n";
+      });
+
+      var dest;
+      if ($scope.backToStart) {
+        dest = "и обратно";        
+      } else {
+        dest = "в\r\n"+$scope.endPoint;
+      };
+
+      alert("Тут будет поиск оптимального маршрута из\r\n"
+        +$scope.startPoint+ "\r\n" + dest +
+        "\r\nпроходя следующие точки:\r\n" + intermediateCitiesString);
+    }
+  };
+
+  function checkConstraints(){
+    var result = true;
+    if ($scope.cities.length < 2) {
+      $("#cities-list").notify(
+        "Добавьте 2 и более города в список",
+        { position: "right top" }
+        );
+      result = false;      
+    };
+
+    if (!$scope.startPoint) {
+      $("#start-point-select").notify(
+        "Выберите начальную точку маршрута",
+        { position: "right top" }
+        );
+      result = false; 
+    }
+
+    if (!$scope.backToStart && !$scope.endPoint) {
+      $("#end-point-select").notify(
+        "Выберите конечную точку маршрута",
+        { position: "right top" }
+        );
+      result = false; 
+    }
+
+
+    return result;
+  }
 
 });

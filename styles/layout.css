@@ -22,9 +22,35 @@ html, body{
 	height: 100%;
 }
 
+#search-box {
+	margin-bottom: 10px;
+}
+
+#cities-list-container {
+	height: 50%;
+	overflow: auto;
+	background-color: #f1f2f3;
+	border-radius: 3px;
+	border: 1px solid #808080;
+	margin-bottom: 10px;
+}
+
+.city {
+	position: relative;
+}
+
+.remove-city-container {
+	height: 14px;
+	width: 14px;
+	position: absolute;
+	right: 3px;
+	top: 50%;
+}
 .remove-city {
-	float: right;
-	margin-top: 2px;
+	height: 14px;
+	width: 14px;
+	position: relative;
+	top: -75%;
 	cursor: pointer;
 }
 
@@ -42,44 +68,11 @@ html, body{
 }
 
 
-.controls {
-        margin-top: 16px;
-        border: 1px solid transparent;
-        border-radius: 2px 0 0 2px;
-        box-sizing: border-box;
-        -moz-box-sizing: border-box;
-        height: 32px;
-        outline: none;
-        box-shadow: 0 2px 6px rgba(0, 0, 0, 0.3);
-      }
+.cityName {
+	cursor: pointer;
+	display: block;
+}
 
-      #pac-input {
-        background-color: #fff;
-        font-family: Roboto;
-        font-size: 15px;
-        font-weight: 300;
-        margin-left: 12px;
-        padding: 0 11px 0 13px;
-        text-overflow: ellipsis;
-        width: 400px;
-      }
-
-      #pac-input:focus {
-        border-color: #4d90fe;
-      }
-
-      .pac-container {
-        font-family: Roboto;
-      }
-
-      #type-selector {
-        color: #fff;
-        background-color: #4d90fe;
-        padding: 5px 11px 0px 11px;
-      }
-
-      #type-selector label {
-        font-family: Roboto;
-        font-size: 13px;
-        font-weight: 300;
-      }
+.city-select {
+	width: 100%;
+}

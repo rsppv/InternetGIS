@@ -6,81 +6,82 @@ var InternetGis = angular.module('InternetGis', []);
 
 InternetGis.controller('MainCtrl', function ($scope) {
 
-  /* Initialization */
-  var geocoder;
+  /* Fields */
   var map;
-
-  function initialize() {
-      geocoder = new google.maps.Geocoder();
-      var mapOptions = {
-          center: new google.maps.LatLng(56.497303, 84.972582),
-          zoom: 9,
-          mapTypeId: google.maps.MapTypeId.ROADMAP
-      };
-      map = new google.maps.Map(document.getElementById("map_canvas"),
-          mapOptions); 
-
-      var input = document.getElementById('city-search');
-      var options = {
-        types: ['(cities)'],
-        componentRestrictions: {country: 'ru'} };
-      var autocomplete = new google.maps.places.Autocomplete(input, options);
-
-      google.maps.event.addListener(autocomplete, 'place_changed', function() {
-        var place = autocomplete.getPlace();
-        if (!place.geometry) {return;}
-
-
-        var name = place.formatted_address;
-        var location = place.geometry;
-        var marker = new google.maps.Marker({
-            map: map,
-            position: place.geometry.location
-        });
-        map.setCenter(place.geometry.location);
-
-        var grepFunc = function(el, i) {
-          if (el.name == name) {return true};
-          return false;
-        };
-
-        if ($.grep($scope.cities, grepFunc).length == 0) {
-          var newCity = {'name': name, "location": location, "marker": marker};
-          $scope.cities.push(newCity);          
-        } else {
-          $("#search-box").notify(
-            "Эта точка уже добавлена", 
-            { position:"bottom left" }
-          );
-        }
-
-        place = null;
-        $scope.newCityName = null;
-        $scope.$apply();  
-
-      });
-  }
-
-  function setMapWidth() {
-    var cpWidth = $("#control_panel").width();
-    var mapWidth = $("body").innerWidth() - cpWidth - 40;
-    $("#map_canvas").width(mapWidth);
-  }
-
-  /* Constructor */
-  angular.element(document).ready(function(){
-    initialize();
-    setMapWidth();
-    $(window).on('resize orientationChanged', setMapWidth); 
-  });
-
+  var autocomplete;
+  var geocoder;
+  var directionsDisplay;
+  var directionsService;
 
   /* Properties */
   $scope.cities = [];
 
+  /* Constructor */
+  angular.element(document).ready(function(){
+    initialize();
+    //putTestPoints();
+    setMapWidth();
+    $(window).on('resize orientationChanged', setMapWidth); 
+  });
 
   /* Methods */
+  function initialize() {
+    var mapOptions = {
+        center: new google.maps.LatLng(50, 0),
+        zoom: 2,
+        mapTypeId: google.maps.MapTypeId.ROADMAP
+    };
+    map = new google.maps.Map(document.getElementById("map_canvas"),
+        mapOptions); 
+
+    var input = document.getElementById('city-search');
+    var options = {types: ['(cities)']};
+    autocomplete = new google.maps.places.Autocomplete(input, options);
+    geocoder = new google.maps.Geocoder();
+    directionsService = new google.maps.DirectionsService();
+    directionsDisplay = new google.maps.DirectionsRenderer();
+
+    google.maps.event.addListener(autocomplete, 'place_changed', $scope.addCity);
+  };
+
+  $scope.addCity = function() {
+    var place = autocomplete.getPlace();
+    if (!place.geometry) {return;}
+
+    directionsDisplay.setMap(null);
+    showMarkers();
+
+    var name = place.formatted_address;
+    var location = place.geometry.location;
+    var marker = new google.maps.Marker({
+        map: map,
+        position: location
+    });
+
+    var grepFunc = function(el, i) {
+      if (el.name == name) {return true};
+      return false;
+    };
+
+    if ($.grep($scope.cities, grepFunc).length == 0) {
+      map.setCenter(location);
+      var newCity = {'name': name, "location": location, "marker": marker};
+      $scope.cities.push(newCity);          
+    } else {
+      $("#search-box").notify(
+        "Эта точка уже добавлена", 
+        { position:"bottom left" }
+      );
+    }
+
+    place = null;
+    $scope.newCityName = null;
+    $scope.$apply();  
+  };
+
   $scope.removeCity = function(index){
+    directionsDisplay.setMap(null);
+    showMarkers();
     $scope.cities[index].marker.setMap(null);
     $scope.cities.splice(index, 1);
   };
@@ -93,33 +94,63 @@ InternetGis.controller('MainCtrl', function ($scope) {
     if ($scope.startPoint == $scope.endPoint) {
       $scope.endPoint = null;
     };
-  }
-
+  };
 
   $scope.calculatePath = function(){
     if (checkConstraints()){
-      var grepFunc = function(el, i) {
+
+      var startPointLocation = $.grep($scope.cities, function(el){ return el.name == $scope.startPoint; })[0].location;
+      var endPointLocation;
+      if ($scope.backToStart) {
+        endPointLocation = $.grep($scope.cities, function(el){ return el.name == $scope.startPoint; })[0].location;
+      } else {
+        endPointLocation = $.grep($scope.cities, function(el){ return el.name == $scope.endPoint; })[0].location;
+      };
+
+      
+
+      var waypointsGrep = function(el, i) {
         if (el.name == $scope.startPoint){ return false; }
         if (!$scope.backToStart && el.name == $scope.endPoint) { return false; }
         return true;
       }
 
-      var intermediateCities = $.grep($scope.cities,grepFunc);
-      var intermediateCitiesString = "";
+      var intermediateCities = $.grep($scope.cities, waypointsGrep);
+      var waypts = [];
       $.each(intermediateCities, function(i, el){
-        intermediateCitiesString += el.name + "\r\n";
+        waypts.push({
+          location: el.location
+        });
       });
 
-      var dest;
-      if ($scope.backToStart) {
-        dest = "и обратно";        
-      } else {
-        dest = "в\r\n"+$scope.endPoint;
+      var request = {
+        origin: startPointLocation,
+        destination: endPointLocation,
+        waypoints: waypts,
+        optimizeWaypoints: true,
+        travelMode: google.maps.TravelMode.DRIVING
       };
 
-      alert("Тут будет поиск оптимального маршрута из\r\n"
-        +$scope.startPoint+ "\r\n" + dest +
-        "\r\nпроходя следующие точки:\r\n" + intermediateCitiesString);
+      showLoadingAnimation();
+      directionsService.route(request, function(response, status) {
+        stopLoadingAnimation();
+        if (status == google.maps.DirectionsStatus.OK) {
+          hideMarkers();
+          directionsDisplay.setMap(map);
+          directionsDisplay.setDirections(response);
+        } else {
+          var error;
+          if (status == google.maps.DirectionsStatus.ZERO_RESULTS)
+            { error = "Не удалось проложить маршрут"; }
+          else { error = status; }
+          $("#b-calculate").notify(
+            "Ошибка: "+ error,
+            { position: "right top" }
+          );
+        }
+
+      });
+
     }
   };
 
@@ -151,6 +182,57 @@ InternetGis.controller('MainCtrl', function ($scope) {
 
 
     return result;
+  };
+
+  function setMapWidth() {
+    var cpWidth = $("#control_panel").width();
+    var mapWidth = $("body").innerWidth() - cpWidth - 40;
+    $("#map_canvas").width(mapWidth);
+  };
+
+  function putTestPoints() {
+    var testCities = ["Лисабон", "Москва", "Кейптаун", "Париж", "Осло"];
+    $.each(testCities, function(i, el){
+      geocoder.geocode({ 'address': el }, function (results, status) {
+        if (status == google.maps.GeocoderStatus.OK) {
+          var name = results[0].formatted_address;
+          var location = results[0].geometry.location;
+          var marker = new google.maps.Marker({
+              map: map,
+              position: location
+          });
+          var newCity = {'name': name, "location": location, "marker": marker};
+          $scope.cities.push(newCity); 
+          $scope.$apply();  
+          $('#start-point-select option').eq(2).prop('selected', true);
+          $('#end-point-select option').eq(3).prop('selected', true);
+          $scope.startPoint = $('#start-point-select option').eq(2).val;
+          $scope.endPoint = $('#end-point-select option').eq(3).val;
+        }
+      });
+    });
+  };
+
+  function hideMarkers() {
+    $.each($scope.cities, function(i, el){
+      el.marker.setMap(null);
+    });
+  };
+
+  function showMarkers() {
+    $.each($scope.cities, function(i, el){
+      el.marker.setMap(map);
+    });
+  };
+
+  function showLoadingAnimation() {    
+    $("#b-calculate").attr("disabled" ,"disabled");
+    $("#b-calculate").text("Прокладываем маршрут...");
+  }
+
+  function stopLoadingAnimation() {    
+    $("#b-calculate").removeAttr("disabled");
+    $("#b-calculate").text("Найти оптимальный маршрут");
   }
 
 });

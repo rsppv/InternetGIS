@@ -1,10 +1,11 @@
  'use strict';
- 
+
  /* Controllers */
 
 var InternetGis = angular.module('InternetGis', []);
 
-InternetGis.controller('MainCtrl', function ($scope) {
+
+InternetGis.controller('MainCtrl', function ($scope, $http) {
 
   /* Fields */
   var map;
@@ -13,81 +14,93 @@ InternetGis.controller('MainCtrl', function ($scope) {
   var directionsDisplay;
   var directionsService;
 
+
+
   /* Properties */
-  $scope.cities = [];
+  $scope.rubrics = [];
 
   /* Constructor */
   angular.element(document).ready(function(){
-    initialize();
+    ymaps.ready(initialize);
     //putTestPoints();
     setMapWidth();
-    $(window).on('resize orientationChanged', setMapWidth); 
+    $(window).on('resize orientationChanged', setMapWidth);
   });
 
   /* Methods */
   function initialize() {
-    var mapOptions = {
-        center: new google.maps.LatLng(50, 0),
-        zoom: 2,
-        mapTypeId: google.maps.MapTypeId.ROADMAP
-    };
-    map = new google.maps.Map(document.getElementById("map_canvas"),
-        mapOptions); 
-
-    var input = document.getElementById('city-search');
-    var options = {types: ['(cities)']};
-    autocomplete = new google.maps.places.Autocomplete(input, options);
-    geocoder = new google.maps.Geocoder();
-    directionsService = new google.maps.DirectionsService();
-    directionsDisplay = new google.maps.DirectionsRenderer();
-
-    google.maps.event.addListener(autocomplete, 'place_changed', $scope.addCity);
-  };
-
-  $scope.addCity = function() {
-    var place = autocomplete.getPlace();
-    if (!place.geometry) {return;}
-
-    directionsDisplay.setMap(null);
-    showMarkers();
-
-    var name = place.formatted_address;
-    var location = place.geometry.location;
-    var marker = new google.maps.Marker({
-        map: map,
-        position: location
+    // DG.then(function () {
+    //     map = DG.map('map', {
+    //         center: [56.49, 84.97],
+    //         zoom: 13,
+    //         geoclicker: true
+    //     });
+    // });
+    map = new ymaps.Map("map", {
+      center: [56.49, 84.97],
+      zoom: 13
     });
 
-    var grepFunc = function(el, i) {
-      if (el.name == name) {return true};
-      return false;
-    };
 
-    if ($.grep($scope.cities, grepFunc).length == 0) {
-      map.setCenter(location);
-      var newCity = {'name': name, "location": location, "marker": marker};
-      $scope.cities.push(newCity);          
-    } else {
+    setMapWidth();
+    
+    var input         = document.getElementById('rubric-search');
+    // var options       = {types: ['(rubrics)']};
+    // geocoder          = new google.maps.Geocoder();
+    // directionsService = new google.maps.DirectionsService();
+    // directionsDisplay = new google.maps.DirectionsRenderer();
+  };
+
+  function setMapWidth() {
+    var cpWidth = $("#control_panel").width();
+    var mapWidth = $("body").innerWidth() - cpWidth - 40;
+    $("#map").width(mapWidth);
+  };
+
+  $scope.addRubric = function() {
+    if ($scope.newRubric == '') return;
+    if ($scope.rubrics.indexOf($scope.newRubric) == -1) {
+      $scope.rubrics.push($scope.newRubric);
+      // getObjectsForRubric($scope.newRubric);
+      $scope.newRubric = '';
+    }
+    else {
       $("#search-box").notify(
-        "Эта точка уже добавлена", 
+        "Уже в списке", 
         { position:"bottom left" }
       );
-    }
-
-    place = null;
-    $scope.newCityName = null;
-    $scope.$apply();  
+    } 
   };
 
-  $scope.removeCity = function(index){
-    directionsDisplay.setMap(null);
-    showMarkers();
-    $scope.cities[index].marker.setMap(null);
-    $scope.cities.splice(index, 1);
+  $scope.removeRubric = function(index){
+    console.log($scope.rubrics.splice(index, 1));
+    console.log("Remained: ", $scope.rubrics);
   };
 
-  $scope.showCity = function(index){
-    map.setCenter($scope.cities[index].marker.position);
+  $scope.getObjectsForRubricList = function(){
+    $scope.rubrics.forEach(getObjectsForRubric);
+  }
+
+  function getObjectsForRubric(rubric){
+    var region = "Томск";
+    var request = "http://catalog.api.2gis.ru/search?what="+
+      rubric+"&where="+
+      region+"&version=1.3&key=1234567890&page=1&pagesize=10";
+
+    console.log(request);
+
+    $http.get(request).success(
+      function(data, status, headers, config) {
+
+        console.log(rubric,"\n",data);
+    })
+    .error(function(data, status, headers, config){
+      console.log(status, headers, config);
+    });
+  }
+
+  $scope.showRubric = function(index){
+    map.setCenter($scope.rubrics[index].marker.position);
   };
 
   $scope.startPointChanged = function(){
@@ -99,12 +112,12 @@ InternetGis.controller('MainCtrl', function ($scope) {
   $scope.calculatePath = function(){
     if (checkConstraints()){
 
-      var startPointLocation = $.grep($scope.cities, function(el){ return el.name == $scope.startPoint; })[0].location;
+      var startPointLocation = $.grep($scope.rubrics, function(el){ return el.name == $scope.startPoint; })[0].location;
       var endPointLocation;
       if ($scope.backToStart) {
-        endPointLocation = $.grep($scope.cities, function(el){ return el.name == $scope.startPoint; })[0].location;
+        endPointLocation = $.grep($scope.rubrics, function(el){ return el.name == $scope.startPoint; })[0].location;
       } else {
-        endPointLocation = $.grep($scope.cities, function(el){ return el.name == $scope.endPoint; })[0].location;
+        endPointLocation = $.grep($scope.rubrics, function(el){ return el.name == $scope.endPoint; })[0].location;
       };
 
       
@@ -115,9 +128,9 @@ InternetGis.controller('MainCtrl', function ($scope) {
         return true;
       }
 
-      var intermediateCities = $.grep($scope.cities, waypointsGrep);
+      var intermediateRubrics = $.grep($scope.rubrics, waypointsGrep);
       var waypts = [];
-      $.each(intermediateCities, function(i, el){
+      $.each(intermediateRubrics, function(i, el){
         waypts.push({
           location: el.location
         });
@@ -156,8 +169,8 @@ InternetGis.controller('MainCtrl', function ($scope) {
 
   function checkConstraints(){
     var result = true;
-    if ($scope.cities.length < 2) {
-      $("#cities-list").notify(
+    if ($scope.rubrics.length < 2) {
+      $("#rubrics-list").notify(
         "Добавьте 2 и более города в список",
         { position: "right top" }
         );
@@ -184,15 +197,9 @@ InternetGis.controller('MainCtrl', function ($scope) {
     return result;
   };
 
-  function setMapWidth() {
-    var cpWidth = $("#control_panel").width();
-    var mapWidth = $("body").innerWidth() - cpWidth - 40;
-    $("#map_canvas").width(mapWidth);
-  };
-
   function putTestPoints() {
-    var testCities = ["Лисабон", "Москва", "Кейптаун", "Париж", "Осло"];
-    $.each(testCities, function(i, el){
+    var testRubrics = ["Лисабон", "Москва", "Кейптаун", "Париж", "Осло"];
+    $.each(testRubrics, function(i, el){
       geocoder.geocode({ 'address': el }, function (results, status) {
         if (status == google.maps.GeocoderStatus.OK) {
           var name = results[0].formatted_address;
@@ -201,8 +208,8 @@ InternetGis.controller('MainCtrl', function ($scope) {
               map: map,
               position: location
           });
-          var newCity = {'name': name, "location": location, "marker": marker};
-          $scope.cities.push(newCity); 
+          var newRubric = {'name': name, "location": location, "marker": marker};
+          $scope.rubrics.push(newRubric); 
           $scope.$apply();  
           $('#start-point-select option').eq(2).prop('selected', true);
           $('#end-point-select option').eq(3).prop('selected', true);
@@ -214,13 +221,13 @@ InternetGis.controller('MainCtrl', function ($scope) {
   };
 
   function hideMarkers() {
-    $.each($scope.cities, function(i, el){
+    $.each($scope.rubrics, function(i, el){
       el.marker.setMap(null);
     });
   };
 
   function showMarkers() {
-    $.each($scope.cities, function(i, el){
+    $.each($scope.rubrics, function(i, el){
       el.marker.setMap(map);
     });
   };

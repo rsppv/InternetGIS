@@ -2,39 +2,49 @@
 <html lang="en" ng-app="InternetGis">
 <head>
   <meta charset="UTF-8">
+
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap.min.css">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/css/bootstrap-theme.min.css">
   <link rel="stylesheet" href="https://maxcdn.bootstrapcdn.com/font-awesome/4.3.0/css/font-awesome.min.css">
   <link rel="stylesheet" type="text/css" href="styles/layout.css">
+
   <script type="text/javascript" src="https://code.jquery.com/jquery-2.1.3.min.js"></script>  
-  <script type="text/javascript"
-      src="http://maps.googleapis.com/maps/api/js?v=3.exp&signed_in=true&libraries=places"></script>
   <script src="https://maxcdn.bootstrapcdn.com/bootstrap/3.3.2/js/bootstrap.min.js"></script>
   <script src="https://ajax.googleapis.com/ajax/libs/angularjs/1.3.12/angular.min.js"></script>
-  <script src="js/notify.min.js"></script>
-  <script src="js/controllers.js"></script>
+  <script src="scripts/notify.min.js"></script>
+
+  <!-- <script src="http://maps.api.2gis.ru/2.0/loader.js?pkg=full" data-id="dgLoader"></script> -->
+  <script src="http://api-maps.yandex.ru/2.1/?lang=ru_RU" type="text/javascript"></script>
+  <script src="scripts/controllers.js"></script>
   <title>Поиск оптимального пути</title>
 </head>
+
 <body ng-controller="MainCtrl">
   <div id="content">
+    
+    <div id="map"></div>
+
     <div id="control_panel">
       <h2 class="page-header">Панель управления</h2>
+  
+      <h3>Куда заехать?</h3> 
+      <div class ="input-group" id="search-box">
 
-      <h3>Список городов</h3> 
-      <div class="input-group" id="search-box">
-        <span class="input-group-addon" id="basic-addon">
-          <span class="fa fa-map-marker"></span>
-        </span>
-        <input id="city-search" ng-model="newCityName" type="text" class="form-control" placeholder="Добавить город" aria-describedby="basic-addon">
+        <input id="rubric-search" ng-model="newRubric" type="text" class="form-control" placeholder="аптека, автомойка, кафе..." aria-describedby="basic-addon">
         </input>
+        <span class="input-group-btn">
+        <button ng-click="addRubric()" class="btn btn-default" type="button">
+          <i class="fa fa-thumb-tack"></i>
+        </button>
+      </span>
       </div>
       
-      <div id="cities-list-container">
-        <ul id="cities-list" class="list-group">
-          <li class="city list-group-item" ng-repeat="city in cities">
-            <span ng-click="showCity($index)" class="cityName">{{city.name}}</span>
-            <div class="remove-city-container">
-              <div class="remove-city fa fa-times" ng-click="removeCity($index)"></div>
+      <div id="rubrics-list-container">
+        <ul id="rubrics-list" class="list-group">
+          <li class="rubric list-group-item" ng-repeat="rubric in rubrics">
+            <span ng-click="showRubric($index)" class="rubricName">{{rubric}}</span>
+            <div class="remove-rubric-container">
+              <div class="remove-rubric fa fa-times" ng-click="removeRubric($index)"></div>
             </div>
           </li>       
         </ul>
@@ -45,7 +55,7 @@
       <div class="form-group">
         <select id="start-point-select" class="form-control" ng-model="startPoint" ng-change="startPointChanged()">
           <option value="" disabled selected>Начальная точка</option>
-          <option ng-repeat="city in cities">{{city.name}}</option>
+          <option ng-repeat="rubric in rubrics">{{rubric}}</option>
         </select>
 
 
@@ -56,15 +66,14 @@
         </div>        
         <select id="end-point-select" class="form-control" ng-model="endPoint" ng-disabled="backToStart">
           <option value="" disabled selected>Конечная точка</option>
-          <option ng-repeat="city in cities" ng-if="city.name!=startPoint">{{city.name}}</option>
+          <option ng-repeat="rubric in rubrics" ng-if="rubric!=startPoint">{{rubric}}</option>
         </select>
       </div>
       </div>
 
-      <button id="b-calculate" ng-click="calculatePath()" class="btn btn-primary">Найти оптимальный маршрут</button>
-      
+      <button id="b-calculate" ng-click="getObjectsForRubricList()" class="btn btn-primary">Найти оптимальный маршрут</button>   
     </div>
-    <div id="map_canvas"></div> 
+
   </div>  
 </body>
 </html>

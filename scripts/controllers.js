@@ -18,6 +18,17 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
 
   /* Properties */
   $scope.rubrics = [];
+  $scope.checkedPoints = [];
+  $scope.startPoint = {
+    coords: [],
+    address: null,
+    marker: null
+  }
+  $scope.endPoint = {
+    coords: [],
+    address: null,
+    marker: null
+  }
 
   /* Constructor */
   angular.element(document).ready(function(){
@@ -29,6 +40,7 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
 
   /* Methods */
   function initialize() {
+    
     // DG.then(function () {
     //     map = DG.map('map', {
     //         center: [56.49, 84.97],
@@ -38,18 +50,103 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
     // });
     map = new ymaps.Map("map", {
       center: [56.49, 84.97],
-      zoom: 13
+      zoom: 13,
+      controls: ["fullscreenControl","searchControl","routeEditor"]
     });
 
 
     setMapWidth();
-    
-    var input         = document.getElementById('rubric-search');
-    // var options       = {types: ['(rubrics)']};
-    // geocoder          = new google.maps.Geocoder();
-    // directionsService = new google.maps.DirectionsService();
-    // directionsDisplay = new google.maps.DirectionsRenderer();
+
   };
+
+  $scope.setStartPoint = function(){
+    
+      map.events.add('click', function (e) {
+        $scope.startPoint.coords = e.get('coords');
+
+        // Если метка уже создана – просто передвигаем ее
+        if ($scope.startPoint.marker) {
+          $scope.startPoint.marker.geometry.setCoordinates($scope.startPoint.coords);
+        }
+        // Если нет – создаем.
+        else {
+          $scope.startPoint.marker = createPlacemark($scope.startPoint.coords);
+          map.geoObjects.add($scope.startPoint.marker);
+          // Слушаем событие окончания перетаскивания на метке.
+          $scope.startPoint.marker.events.add('dragend', function () {
+              getAddress($scope.startPoint.marker.geometry.getCoordinates(), 0);
+          });
+        }
+
+        $scope.startPoint.marker.properties.set('iconContent', 'поиск...');
+        getAddress($scope.startPoint.coords, 0);      
+      });      
+    
+  }
+
+  $scope.setEndPoint = function() {
+    map.events.add('click', function (e) {
+      $scope.endPoint.coords = e.get('coords');
+
+      // Если метка уже создана – просто передвигаем ее
+      if ($scope.endPoint.marker) {
+        $scope.endPoint.marker.geometry.setCoordinates($scope.endPoint.coords);
+      }
+      // Если нет – создаем.
+      else {
+        $scope.endPoint.marker = createPlacemark($scope.endPoint.coords);
+        map.geoObjects.add($scope.endPoint.marker);
+        // Слушаем событие окончания перетаскивания на метке.
+        $scope.endPoint.marker.events.add('dragend', function () {
+            getAddress($scope.endPoint.marker.geometry.getCoordinates(),1);
+        });
+      }
+
+      $scope.endPoint.marker.properties.set('iconContent', 'поиск...');
+      getAddress($scope.endPoint.coords, 1);      
+    }); 
+  }
+
+  // Определяем адрес по координатам (обратное геокодирование)
+  function getAddress(coords, pointNumber) {
+      ymaps.geocode(coords).then(function (res) {
+          var firstGeoObject = res.geoObjects.get(0);
+            if (pointNumber == 0) 
+              fillStartPoint(firstGeoObject.properties.get('text'));
+            else
+              fillEndPoint(firstGeoObject.properties.get('text'));
+      });
+  }
+
+  function fillStartPoint(address){
+    $scope.startPoint.address = address;
+    $scope.$apply();
+    $scope.startPoint.marker.properties
+      .set({
+          iconContent: "A",
+          balloonContent: address
+      }); 
+  }
+
+  function fillEndPoint(address){
+    $scope.endPoint.address = address;
+    $scope.$apply();
+    $scope.endPoint.marker.properties
+      .set({
+          iconContent: "Б",
+          balloonContent: address
+      }); 
+  }
+
+  // Создание метки
+  function createPlacemark(coords) {
+      return new ymaps.Placemark(coords, {
+          iconContent: 'поиск...'
+      }, {
+          preset: 'islands#circleIcon',
+          draggable: true
+      });
+  }
 
   function setMapWidth() {
     var cpWidth = $("#control_panel").width();
@@ -81,26 +178,48 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
     $scope.rubrics.forEach(getObjectsForRubric);
   }
 
-  function getObjectsForRubric(rubric){
+  $scope.getObjectsForRubric = function(rubric){
     var region = "Томск";
     var request = "http://catalog.api.2gis.ru/search?what="+
       rubric+"&where="+
-      region+"&version=1.3&key=1234567890&page=1&pagesize=10";
+      region+"&version=1.3&key=1234567890&page=5&pagesize=5";
 
-    console.log(request);
 
     $http.get(request).success(
       function(data, status, headers, config) {
-
-        console.log(rubric,"\n",data);
+        console.log(request);
+        // console.log(rubric,"\n",data);
+        var response = [];
+        data.result.forEach(function(obj) {
+          response.push({
+            name : obj.name,
+            address : obj.address,
+            coords : [obj.lat, obj.lon]
+          });
+        });
+        
+        showPlacemarks(response);
     })
     .error(function(data, status, headers, config){
       console.log(status, headers, config);
     });
   }
 
-  $scope.showRubric = function(index){
-    map.setCenter($scope.rubrics[index].marker.position);
+  function showPlacemarks(points){
+    var myCollection = new ymaps.GeoObjectCollection();
+    
+    // Заполняем коллекцию данными.
+    for (var i = 0, l = points.length; i < l; i++) {
+        var point = points[i];
+        myCollection.add(new ymaps.Placemark(
+            point.coords, {
+                balloonContentBody: point.name
+            }
+        ));
+    }
+    // Добавляем коллекцию меток на карту.
+    map.geoObjects.add(myCollection);
+
   };
 
   $scope.startPointChanged = function(){
@@ -110,7 +229,24 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
   };
 
   $scope.calculatePath = function(){
-    if (checkConstraints()){
+    
+    var multiRoute = new ymaps.multiRouter.MultiRoute({
+        // Описание опорных точек мультимаршрута.
+        referencePoints: [
+            [56.45614, 84.9503],
+            [56.47363, 85.01499]
+        ],
+        // Параметры маршрутизации.
+        params: {
+            // Ограничение на максимальное количество маршрутов, возвращаемое маршрутизатором.
+            results: 2
+        }
+    }, {
+        // Автоматически устанавливать границы карты так, чтобы маршрут был виден целиком.
+        boundsAutoApply: true
+    });
+    map.geoObjects.add(multiRoute);
+    /*if (checkConstraints()){
 
       var startPointLocation = $.grep($scope.rubrics, function(el){ return el.name == $scope.startPoint; })[0].location;
       var endPointLocation;
@@ -164,7 +300,7 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
 
       });
 
-    }
+    }*/
   };
 
   function checkConstraints(){

@@ -26,23 +26,44 @@
 
     <div id="control_panel">
       <h2 class="page-header">Панель управления</h2>
-  
+      
+      <!-- Блок выбора пункта А и Б -->
+      <div id="salesman-box" class="form-group">
+        <label><em>Введите адрес</em></label>
+        <!-- Начальная точка А -->
+        <div class="input-group">
+          <span ng-click="setStartPoint()" class="input-group-addon" id="basic-addon1">
+            <i class="fa fa-circle-o"></i>
+          </span>
+          <input id="start-point-select" class="form-control" ng-model="startPoint.address" placeholder="откуда" aria-describedby="basic-addon">
+        </div>
+
+        <!-- Конечная точка Б -->
+        <div class="input-group">
+          <span ng-click="setEndPoint()" class="input-group-addon" id="basic-addon1">
+            <i class="fa fa-dot-circle-o"></i>
+          </span>
+          <input id="end-point-select" class="form-control" ng-model="endPoint.address"  placeholder="куда" aria-describedby="basic-addon">
+        </div>        
+
+      </div>
+
       <h3>Куда заехать?</h3> 
       <div class ="input-group" id="search-box">
 
         <input id="rubric-search" ng-model="newRubric" type="text" class="form-control" placeholder="аптека, автомойка, кафе..." aria-describedby="basic-addon">
         </input>
         <span class="input-group-btn">
-        <button ng-click="addRubric()" class="btn btn-default" type="button">
-          <i class="fa fa-thumb-tack"></i>
-        </button>
-      </span>
+          <button ng-click="addRubric()" class="btn btn-default" type="button">
+            <i class="fa fa-thumb-tack"></i>
+          </button>
+        </span>
       </div>
       
       <div id="rubrics-list-container">
         <ul id="rubrics-list" class="list-group">
           <li class="rubric list-group-item" ng-repeat="rubric in rubrics">
-            <span ng-click="showRubric($index)" class="rubricName">{{rubric}}</span>
+            <span ng-click="getObjectsForRubric(rubric)" class="rubricName">{{rubric}}</span>
             <div class="remove-rubric-container">
               <div class="remove-rubric fa fa-times" ng-click="removeRubric($index)"></div>
             </div>
@@ -50,28 +71,8 @@
         </ul>
       </div>
 
-      <div id="salesman-box">
-      <h3>Построение маршрута</h3>
-      <div class="form-group">
-        <select id="start-point-select" class="form-control" ng-model="startPoint" ng-change="startPointChanged()">
-          <option value="" disabled selected>Начальная точка</option>
-          <option ng-repeat="rubric in rubrics">{{rubric}}</option>
-        </select>
 
-
-        <div id="back-to-start-checkbox" class="checkbox">
-          <label>
-            <input type="checkbox" ng-model="backToStart">Вернуться в начало</input>  
-          </label>             
-        </div>        
-        <select id="end-point-select" class="form-control" ng-model="endPoint" ng-disabled="backToStart">
-          <option value="" disabled selected>Конечная точка</option>
-          <option ng-repeat="rubric in rubrics" ng-if="rubric!=startPoint">{{rubric}}</option>
-        </select>
-      </div>
-      </div>
-
-      <button id="b-calculate" ng-click="getObjectsForRubricList()" class="btn btn-primary">Найти оптимальный маршрут</button>   
+      <button id="b-calculate" ng-click="calculatePath()" class="btn btn-primary">Найти оптимальный маршрут</button>   
     </div>
 
   </div>  

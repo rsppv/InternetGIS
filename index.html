@@ -32,23 +32,23 @@
         <label><em>Введите адрес</em></label>
         <!-- Начальная точка А -->
         <div class="input-group">
-          <span ng-click="setStartPoint()" class="input-group-addon" id="basic-addon1">
-            <i class="fa fa-circle-o"></i>
+          <span ng-click="" class="input-group-addon" id="basic-addon1">
+            A
           </span>
           <input id="start-point-select" class="form-control" ng-model="startPoint.address" placeholder="откуда" aria-describedby="basic-addon">
         </div>
 
         <!-- Конечная точка Б -->
         <div class="input-group">
-          <span ng-click="setEndPoint()" class="input-group-addon" id="basic-addon1">
-            <i class="fa fa-dot-circle-o"></i>
+          <span ng-click="" class="input-group-addon" id="basic-addon1">
+            Б
           </span>
           <input id="end-point-select" class="form-control" ng-model="endPoint.address"  placeholder="куда" aria-describedby="basic-addon">
         </div>        
 
       </div>
 
-      <h3>Куда заехать?</h3> 
+      <h3 ng-click="hideMarkers()">Куда заехать?</h3> 
       <div class ="input-group" id="search-box">
 
         <input id="rubric-search" ng-model="newRubric" type="text" class="form-control" placeholder="аптека, автомойка, кафе..." aria-describedby="basic-addon">
@@ -72,7 +72,7 @@
       </div>
 
 
-      <button id="b-calculate" ng-click="calculatePath()" class="btn btn-primary">Найти оптимальный маршрут</button>   
+      <button id="b-calculate" ng-click="getObjectsForRubricList()" class="btn btn-primary">Перестроить маршрут</button>   
     </div>
 
   </div>  

@@ -13,7 +13,11 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
   var geocoder;
   var directionsDisplay;
   var directionsService;
-
+  var ptp = DeliveryCalculator.prototype;
+  var calculator;
+  var stPoint;
+  var finPoint;
+  var checkedCollection;
 
 
   /* Properties */
@@ -54,99 +58,219 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
       controls: ["fullscreenControl","searchControl","routeEditor"]
     });
 
-
+    checkedCollection = new ymaps.GeoObjectCollection();
     setMapWidth();
+    calculator = new DeliveryCalculator(map, map.getCenter());
+  };
+
+  function DeliveryCalculator(map, finish) {
+    this._map = map;
+    this._start = null;
+    this._route = null;
+    this._startBalloon;
+    this._finishBalloon;
+
+    map.events.add('click', this._onClick, this);
+  }
+
+  ptp._onClick= function (e) {
+    console.log("onclick", this._start);
+    if (this._start) {
+        this.setFinishPoint(e.get('coords'));
+    } else {
+        this.setStartPoint(e.get('coords'));
+    }
+  };
+
+  ptp._onStartDragEnd = function (e) {
+    console.log("dragStart", this._start);
+      var coords = this._start.geometry.getCoordinates();
+      this.geocode("start", coords);
+  };
+
+  ptp._onFinishDragEnd = function (e) {
+    console.log("dragEnd", this._finish);
+      var coords = this._finish.geometry.getCoordinates();
+      this.geocode("finish", coords);
+  };
+
+  ptp.getDirection = function () {
+    console.log("directions", this._start, $scope.startPoint);
+      if(this._route) {
+          this._map.geoObjects.remove(this._route);
+      }
+      
+      if (this._start && this._finish) {
+          console.log("промежуточные т-ки 1", $scope.checkedPoints);
+          var self = this,
+              start = this._start.geometry.getCoordinates(),
+              finish = this._finish.geometry.getCoordinates(),
+              startBalloon = this._startBalloon,
+              finishBalloon = this._finishBalloon,
+              allPoints = $scope.checkedPoints.slice(0);
+              // console.log("промежуточные т-ки 2", $scope.checkedPoints);
+              allPoints.unshift(start);
+              // console.log("промежуточные т-ки 3", start, $scope.checkedPoints);
+              allPoints.push(finish);
+              // console.log("промежуточные т-ки 4", finish, $scope.checkedPoints);
+              console.log("Все точки после", allPoints);
+          
+          ymaps.route(allPoints)
+            .then(function (router) {
+              self._route = router.getPaths();
+              self._route.options.set({ 
+                strokeWidth: 5, 
+                strokeColor: '0000ffff', 
+                opacity: 0.5
+              });
+              self._map.geoObjects.add(self._route);
+            });
+          self._map.setBounds(self._map.geoObjects.getBounds());          
+      }
+  };
+
+  ptp.setStartPoint = function (position) {
+    console.log("setStPoint", position, this._start);
+      if(this._start) {
+          this._start.geometry.setCoordinates(position);
+          //$scope.startPoint.coords = this._start.geometry.getCoordinates();
+          console.log("setStPoint", position,this._start);
+      }
+      else {
+          this._start = new ymaps.Placemark(position, { iconContent: 'А' }, { draggable: true });
+          this._start.events.add('dragend', this._onStartDragEnd, this);
+          this._map.geoObjects.add(this._start);
+          //$scope.startPoint.coords = this._start.geometry.getCoordinates();
+          console.log("setStPoint", position,this._start);
+      }
+      this.geocode("start", position);
+  };
+
+  ptp.setFinishPoint = function (position) {
+      if(this._finish) {
+          this._finish.geometry.setCoordinates(position);
+      }
+      else {
+          this._finish = new ymaps.Placemark(position, { iconContent: 'Б' }, { draggable: true });
+          this._finish.events.add('dragend', this._onFinishDragEnd, this);
+          this._map.geoObjects.add(this._finish);
+      }
+      if (this._start) {
+          this.geocode("finish", position);
+      }
+  };
+
+  ptp.geocode = function (str, point) {
+    console.log("geocode", point, str, this._start);
+      ymaps.geocode(point).then(function(geocode) {
+          if (str == "start") {
+              this._startBalloon = geocode.geoObjects.get(0) &&
+                  geocode.geoObjects.get(0).properties.get('balloonContentBody') || '';
+              console.log(str + " " + this._startBalloon);
+              stPoint = point;
+              $scope.startPoint.address = geocode.geoObjects.get(0).properties.get('text');
+              $scope.$apply();
+          } else {
+              this._finishBalloon = geocode.geoObjects.get(0) &&
+                  geocode.geoObjects.get(0).properties.get('balloonContentBody') || '';
+              console.log(str + " " + this._finishBalloon);
+              finPoint = point;
+              $scope.endPoint.address = geocode.geoObjects.get(0).properties.get('text');
+              $scope.$apply();              
+          }
+          this.getDirection();
+      }, this);
 
   };
 
-  $scope.setStartPoint = function(){
+  // $scope.setStartPoint = function(){
     
-      map.events.add('click', function (e) {
-        $scope.startPoint.coords = e.get('coords');
+  //     map.events.add('click', function (e) {
+  //       $scope.startPoint.coords = e.get('coords');
 
-        // Если метка уже создана – просто передвигаем ее
-        if ($scope.startPoint.marker) {
-          $scope.startPoint.marker.geometry.setCoordinates($scope.startPoint.coords);
-        }
-        // Если нет – создаем.
-        else {
-          $scope.startPoint.marker = createPlacemark($scope.startPoint.coords);
-          map.geoObjects.add($scope.startPoint.marker);
-          // Слушаем событие окончания перетаскивания на метке.
-          $scope.startPoint.marker.events.add('dragend', function () {
-              getAddress($scope.startPoint.marker.geometry.getCoordinates(), 0);
-          });
-        }
+  //       // Если метка уже создана – просто передвигаем ее
+  //       if ($scope.startPoint.marker) {
+  //         $scope.startPoint.marker.geometry.setCoordinates($scope.startPoint.coords);
+  //       }
+  //       // Если нет – создаем.
+  //       else {
+  //         $scope.startPoint.marker = createPlacemark($scope.startPoint.coords);
+  //         map.geoObjects.add($scope.startPoint.marker);
+  //         // Слушаем событие окончания перетаскивания на метке.
+  //         $scope.startPoint.marker.events.add('dragend', function () {
+  //             getAddress($scope.startPoint.marker.geometry.getCoordinates(), 0);
+  //         });
+  //       }
 
-        $scope.startPoint.marker.properties.set('iconContent', 'поиск...');
-        getAddress($scope.startPoint.coords, 0);      
-      });      
+  //       $scope.startPoint.marker.properties.set('iconContent', 'поиск...');
+  //       getAddress($scope.startPoint.coords, 0);      
+  //     });      
     
-  }
+  // }
 
-  $scope.setEndPoint = function() {
-    map.events.add('click', function (e) {
-      $scope.endPoint.coords = e.get('coords');
+  // $scope.setEndPoint = function() {
+  //   map.events.add('click', function (e) {
+  //     $scope.endPoint.coords = e.get('coords');
 
-      // Если метка уже создана – просто передвигаем ее
-      if ($scope.endPoint.marker) {
-        $scope.endPoint.marker.geometry.setCoordinates($scope.endPoint.coords);
-      }
-      // Если нет – создаем.
-      else {
-        $scope.endPoint.marker = createPlacemark($scope.endPoint.coords);
-        map.geoObjects.add($scope.endPoint.marker);
-        // Слушаем событие окончания перетаскивания на метке.
-        $scope.endPoint.marker.events.add('dragend', function () {
-            getAddress($scope.endPoint.marker.geometry.getCoordinates(),1);
-        });
-      }
+  //     // Если метка уже создана – просто передвигаем ее
+  //     if ($scope.endPoint.marker) {
+  //       $scope.endPoint.marker.geometry.setCoordinates($scope.endPoint.coords);
+  //     }
+  //     // Если нет – создаем.
+  //     else {
+  //       $scope.endPoint.marker = createPlacemark($scope.endPoint.coords);
+  //       map.geoObjects.add($scope.endPoint.marker);
+  //       // Слушаем событие окончания перетаскивания на метке.
+  //       $scope.endPoint.marker.events.add('dragend', function () {
+  //           getAddress($scope.endPoint.marker.geometry.getCoordinates(),1);
+  //       });
+  //     }
 
-      $scope.endPoint.marker.properties.set('iconContent', 'поиск...');
-      getAddress($scope.endPoint.coords, 1);      
-    }); 
-  }
+  //     $scope.endPoint.marker.properties.set('iconContent', 'поиск...');
+  //     getAddress($scope.endPoint.coords, 1);      
+  //   }); 
+  // }
 
   // Определяем адрес по координатам (обратное геокодирование)
-  function getAddress(coords, pointNumber) {
-      ymaps.geocode(coords).then(function (res) {
-          var firstGeoObject = res.geoObjects.get(0);
-            if (pointNumber == 0) 
-              fillStartPoint(firstGeoObject.properties.get('text'));
-            else
-              fillEndPoint(firstGeoObject.properties.get('text'));
-      });
-  }
+  // function getAddress(coords, pointNumber) {
+  //     ymaps.geocode(coords).then(function (res) {
+  //         var firstGeoObject = res.geoObjects.get(0);
+  //           if (pointNumber == 0) 
+  //             fillStartPoint(firstGeoObject.properties.get('text'));
+  //           else
+  //             fillEndPoint(firstGeoObject.properties.get('text'));
+  //     });
+  // }
 
-  function fillStartPoint(address){
-    $scope.startPoint.address = address;
-    $scope.$apply();
-    $scope.startPoint.marker.properties
-      .set({
-          iconContent: "A",
-          balloonContent: address
-      }); 
-  }
+  // function fillStartPoint(address){
+  //   $scope.startPoint.address = address;
+  //   $scope.$apply();
+  //   $scope.startPoint.marker.properties
+  //     .set({
+  //         iconContent: "A",
+  //         balloonContent: address
+  //     }); 
+  // }
 
-  function fillEndPoint(address){
-    $scope.endPoint.address = address;
-    $scope.$apply();
-    $scope.endPoint.marker.properties
-      .set({
-          iconContent: "Б",
-          balloonContent: address
-      }); 
-  }
+  // function fillEndPoint(address){
+  //   $scope.endPoint.address = address;
+  //   $scope.$apply();
+  //   $scope.endPoint.marker.properties
+  //     .set({
+  //         iconContent: "Б",
+  //         balloonContent: address
+  //     }); 
+  // }
 
-  // Создание метки
-  function createPlacemark(coords) {
-      return new ymaps.Placemark(coords, {
-          iconContent: 'поиск...'
-      }, {
-          preset: 'islands#circleIcon',
-          draggable: true
-      });
-  }
+  // // Создание метки
+  // function createPlacemark(coords) {
+  //     return new ymaps.Placemark(coords, {
+  //         iconContent: 'поиск...'
+  //     }, {
+  //         preset: 'islands#circleIcon',
+  //         draggable: true
+  //     });
+  // }
 
   function setMapWidth() {
     var cpWidth = $("#control_panel").width();
@@ -172,53 +296,116 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
   $scope.removeRubric = function(index){
     console.log($scope.rubrics.splice(index, 1));
     console.log("Remained: ", $scope.rubrics);
+    $scope.checkedPoints.splice(index,1);
+    console.log($scope.checkedPoints);
   };
 
+  var allResults = [];
+
   $scope.getObjectsForRubricList = function(){
-    $scope.rubrics.forEach(getObjectsForRubric);
+    $scope.rubrics.forEach($scope.getObjectsForRubric);
+      
   }
 
   $scope.getObjectsForRubric = function(rubric){
     var region = "Томск";
-    var request = "http://catalog.api.2gis.ru/search?what="+
-      rubric+"&where="+
-      region+"&version=1.3&key=1234567890&page=5&pagesize=5";
+    var startPointCoords = stPoint.slice(0); // было splice(0) - возможно из-за этого ошибка.
+    startPointCoords.reverse();
 
+    var endPointCoords = finPoint.slice(0); // было splice(0) - возможно из-за этого ошибка.
+    endPointCoords.reverse();
 
-    $http.get(request).success(
-      function(data, status, headers, config) {
-        console.log(request);
-        // console.log(rubric,"\n",data);
-        var response = [];
-        data.result.forEach(function(obj) {
-          response.push({
-            name : obj.name,
-            address : obj.address,
-            coords : [obj.lat, obj.lon]
-          });
+    var request1 = "http://catalog.api.2gis.ru/search?what="+
+      rubric+"&point="+
+      startPointCoords+"&radius=1000&sort=distance&version=1.3&key=";
+    var request2 = "http://catalog.api.2gis.ru/search?what="+
+      rubric+"&point="+
+      endPointCoords+"&radius=1000&sort=distance&version=1.3&key=";
+
+      console.log("0 - ", allResults);
+
+    $http.get(request1).success(function(data) {
+      console.log(request1);
+      console.log(rubric,"\n",data.result[0]);
+       // var response = [];
+      var obj = data.result[0];
+              
+      allResults.push({
+        name : obj.name,
+        address : obj.address,
+        coords : [obj.lat, obj.lon],
+        dist : obj.dist
+      });
+      console.log("1 - ", allResults);
+      
+      // $scope.checkedPoints.push([obj.lat, obj.lon]);
+      $http.get(request2).success(function(data2) {
+        // console.log(request2);
+        // console.log(rubric,"\n",data2.result[0]);
+         // var response = [];
+        var obj = data2.result[0];
+                
+        allResults.push({
+          name : obj.name,
+          address : obj.address,
+          coords : [obj.lat, obj.lon],
+          dist : obj.dist
         });
+
+        allResults.sort(function (a, b) { return a.dist-b.dist});
+        // console.log("2 - ", allResults);
+        $scope.checkedPoints.push(allResults[0].coords);
+        console.log("3 - ", allResults[0].coords);
         
-        showPlacemarks(response);
+        checkedCollection.add(new ymaps.Placemark(
+            allResults[0].coords, {
+                balloonContentBody: allResults[0].name
+            }
+        ));
+        map.geoObjects.add(checkedCollection);
+      });
+              checkedCollection.add(new ymaps.Placemark(
+            allResults[0].coords, {
+                balloonContentBody: allResults[0].name
+            }
+        ));
+        map.geoObjects.add(checkedCollection);
     })
     .error(function(data, status, headers, config){
       console.log(status, headers, config);
     });
+
+    
+        
+        // $scope.checkedPoints.push([obj.lat, obj.lon]);
+        
+        // data.result.forEach(function(obj) {
+        //   response.push({
+        //     name : obj.name,
+        //     address : obj.address,
+        //     coords : [obj.lat, obj.lon]
+        //   });
+        //   $scope.checkedPoints.push([obj.lat, obj.lon]);
+        // });
+        
+
   }
 
+
+
   function showPlacemarks(points){
-    var myCollection = new ymaps.GeoObjectCollection();
-    
+    console.log("showPlacemarks", points)
     // Заполняем коллекцию данными.
     for (var i = 0, l = points.length; i < l; i++) {
         var point = points[i];
-        myCollection.add(new ymaps.Placemark(
+        checkedCollection.add(new ymaps.Placemark(
             point.coords, {
                 balloonContentBody: point.name
             }
         ));
     }
     // Добавляем коллекцию меток на карту.
-    map.geoObjects.add(myCollection);
+    map.geoObjects.add(checkedCollection);
 
   };
 
@@ -229,78 +416,7 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
   };
 
   $scope.calculatePath = function(){
-    
-    var multiRoute = new ymaps.multiRouter.MultiRoute({
-        // Описание опорных точек мультимаршрута.
-        referencePoints: [
-            [56.45614, 84.9503],
-            [56.47363, 85.01499]
-        ],
-        // Параметры маршрутизации.
-        params: {
-            // Ограничение на максимальное количество маршрутов, возвращаемое маршрутизатором.
-            results: 2
-        }
-    }, {
-        // Автоматически устанавливать границы карты так, чтобы маршрут был виден целиком.
-        boundsAutoApply: true
-    });
-    map.geoObjects.add(multiRoute);
-    /*if (checkConstraints()){
 
-      var startPointLocation = $.grep($scope.rubrics, function(el){ return el.name == $scope.startPoint; })[0].location;
-      var endPointLocation;
-      if ($scope.backToStart) {
-        endPointLocation = $.grep($scope.rubrics, function(el){ return el.name == $scope.startPoint; })[0].location;
-      } else {
-        endPointLocation = $.grep($scope.rubrics, function(el){ return el.name == $scope.endPoint; })[0].location;
-      };
-
-      
-
-      var waypointsGrep = function(el, i) {
-        if (el.name == $scope.startPoint){ return false; }
-        if (!$scope.backToStart && el.name == $scope.endPoint) { return false; }
-        return true;
-      }
-
-      var intermediateRubrics = $.grep($scope.rubrics, waypointsGrep);
-      var waypts = [];
-      $.each(intermediateRubrics, function(i, el){
-        waypts.push({
-          location: el.location
-        });
-      });
-
-      var request = {
-        origin: startPointLocation,
-        destination: endPointLocation,
-        waypoints: waypts,
-        optimizeWaypoints: true,
-        travelMode: google.maps.TravelMode.DRIVING
-      };
-
-      showLoadingAnimation();
-      directionsService.route(request, function(response, status) {
-        stopLoadingAnimation();
-        if (status == google.maps.DirectionsStatus.OK) {
-          hideMarkers();
-          directionsDisplay.setMap(map);
-          directionsDisplay.setDirections(response);
-        } else {
-          var error;
-          if (status == google.maps.DirectionsStatus.ZERO_RESULTS)
-            { error = "Не удалось проложить маршрут"; }
-          else { error = status; }
-          $("#b-calculate").notify(
-            "Ошибка: "+ error,
-            { position: "right top" }
-          );
-        }
-
-      });
-
-    }*/
   };
 
   function checkConstraints(){
@@ -356,10 +472,9 @@ InternetGis.controller('MainCtrl', function ($scope, $http) {
     });
   };
 
-  function hideMarkers() {
-    $.each($scope.rubrics, function(i, el){
-      el.marker.setMap(null);
-    });
+  $scope.hideMarkers =  function () {
+    checkedCollection.removeAll();
+    $scope.checkedPoints = [];
   };
 
   function showMarkers() {
